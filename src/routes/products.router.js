@@ -3,79 +3,77 @@ import ProductManager from '../managers/ProductManager.js';
 import path from 'path';
 import { fileURLToPath } from 'url';
 
-const router = Router();
-
-// Obtener la ruta absoluta al archivo products.json
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 const filePath = path.join(__dirname, '..', 'data', 'products.json');
 
 const productManager = new ProductManager(filePath);
 
-// GET /api/products/
-router.get('/', async (req, res) => {
-  const productos = await productManager.getProducts();
-  res.json(productos);
-});
+export default function productsRouter(io) {
+  const router = Router();
 
-// GET /api/products/:pid
-router.get('/:pid', async (req, res) => {
-  const { pid } = req.params;
-  const producto = await productManager.getProductById(pid);
-
-  if (!producto) {
-    return res.status(404).json({ error: 'Producto no encontrado' });
-  }
-
-  res.json(producto);
-});
-
-// POST /api/products/
-router.post('/', async (req, res) => {
-  const { title, description, code, price, stock, category, thumbnails } = req.body;
-
-  if (!title || !description || !code || !price || !stock || !category) {
-    return res.status(400).json({ error: 'Faltan campos obligatorios' });
-  }
-
-  const nuevoProducto = await productManager.addProduct({
-    title,
-    description,
-    code,
-    price,
-    stock,
-    category,
-    thumbnails: thumbnails || [],
+  // GET /api/products/
+  router.get('/', async (req, res) => {
+    const productos = await productManager.getProducts();
+    res.json(productos);
   });
 
-  res.status(201).json(nuevoProducto);
-});
+  // GET /api/products/:pid
+  router.get('/:pid', async (req, res) => {
+    const { pid } = req.params;
+    const producto = await productManager.getProductById(pid);
+    if (!producto) return res.status(404).json({ error: 'Producto no encontrado' });
+    res.json(producto);
+  });
 
-// PUT /api/products/:pid
-router.put('/:pid', async (req, res) => {
-  const { pid } = req.params;
-  const campos = req.body;
+  // POST /api/products/
+  router.post('/', async (req, res) => {
+    const { title, description, code, price, stock, category, thumbnails } = req.body;
 
-  const actualizado = await productManager.updateProduct(pid, campos);
+    if (!title || !description || !code || !price || !stock || !category) {
+      return res.status(400).json({ error: 'Faltan campos obligatorios' });
+    }
 
-  if (!actualizado) {
-    return res.status(404).json({ error: 'Producto no encontrado' });
-  }
+    const nuevoProducto = await productManager.addProduct({
+      title,
+      description,
+      code,
+      price,
+      stock,
+      category,
+      thumbnails: thumbnails || [],
+    });
 
-  res.json(actualizado);
-});
+    const productosActualizados = await productManager.getProducts();
+    io.emit('updateProducts', productosActualizados);
 
-// DELETE /api/products/:pid
-router.delete('/:pid', async (req, res) => {
-  const { pid } = req.params;
+    res.status(201).json(nuevoProducto);
+  });
 
-  const eliminado = await productManager.deleteProduct(pid);
+  // PUT /api/products/:pid
+  router.put('/:pid', async (req, res) => {
+    const { pid } = req.params;
+    const campos = req.body;
 
-  if (!eliminado) {
-    return res.status(404).json({ error: 'Producto no encontrado' });
-  }
+    const actualizado = await productManager.updateProduct(pid, campos);
 
-  res.json({ mensaje: 'Producto eliminado correctamente' });
-});
+    if (!actualizado) return res.status(404).json({ error: 'Producto no encontrado' });
 
-export default router;
+    res.json(actualizado);
+  });
+
+  // DELETE /api/products/:pid
+  router.delete('/:pid', async (req, res) => {
+    const { pid } = req.params;
+
+    const eliminado = await productManager.deleteProduct(pid);
+    if (!eliminado) return res.status(404).json({ error: 'Producto no encontrado' });
+
+    const productosActualizados = await productManager.getProducts();
+    io.emit('updateProducts', productosActualizados);
+
+    res.json({ mensaje: 'Producto eliminado correctamente' });
+  });
+
+  return router;
+}

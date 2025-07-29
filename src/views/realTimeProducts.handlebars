@@ -1,0 +1,64 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <title>Productos en Tiempo Real</title>
+  <script src="/socket.io/socket.io.js"></script>
+</head>
+<body>
+  <h1>Lista de Productos (Tiempo Real)</h1>
+
+  <ul id="product-list">
+    {{#each productos}}
+      <li>
+        <strong>{{title}}</strong> - ${{price}} - Stock: {{stock}} <br>
+        <em>{{description}}</em>
+      </li>
+    {{/each}}
+  </ul>
+
+  <hr>
+
+  <h2>Agregar nuevo producto</h2>
+  <form id="product-form">
+    <input type="text" name="title" placeholder="Título" required />
+    <input type="text" name="description" placeholder="Descripción" required />
+    <input type="text" name="code" placeholder="Código" required />
+    <input type="number" name="price" placeholder="Precio" required />
+    <input type="number" name="stock" placeholder="Stock" required />
+    <input type="text" name="category" placeholder="Categoría" required />
+    <input type="text" name="thumbnails" placeholder="URL de imagen (opcional)" />
+    <button type="submit">Agregar Producto</button>
+  </form>
+
+  <script>
+    const socket = io();
+
+    socket.on('updateProducts', productos => {
+      const ul = document.getElementById('product-list');
+      ul.innerHTML = '';
+      productos.forEach(p => {
+        const li = document.createElement('li');
+        li.innerHTML = `<strong>${p.title}</strong> - $${p.price} - Stock: ${p.stock}<br><em>${p.description}</em>`;
+        ul.appendChild(li);
+      });
+    });
+
+    const form = document.getElementById('product-form');
+    form.addEventListener('submit', e => {
+      e.preventDefault();
+      const formData = new FormData(form);
+      const producto = {};
+      formData.forEach((value, key) => {
+        producto[key] = value;
+      });
+      producto.price = Number(producto.price);
+      producto.stock = Number(producto.stock);
+      producto.thumbnails = producto.thumbnails ? [producto.thumbnails] : [];
+
+      socket.emit('newProduct', producto);
+      form.reset();
+    });
+  </script>
+</body>
+</html>

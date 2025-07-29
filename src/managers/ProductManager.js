@@ -43,7 +43,6 @@ export default class ProductManager {
 
     if (index === -1) return null;
 
-    // No permitir modificar el ID
     delete campos.id;
 
     productos[index] = {
