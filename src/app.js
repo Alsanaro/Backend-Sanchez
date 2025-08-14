@@ -4,16 +4,20 @@ import { Server } from 'socket.io';
 import handlebars from 'express-handlebars';
 import path from 'path';
 import { fileURLToPath } from 'url';
+import dotenv from 'dotenv';
 
-import productsRouter from './routes/products.router.js';
+import productsRouterFactory from './routes/products.router.js';
 import cartsRouter from './routes/carts.router.js';
 import viewsRouter from './routes/views.router.js';
-import ProductManager from './managers/ProductManager.js';
+import { connectMongo } from './db/mongo.js';
+
+dotenv.config();
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
+
 const app = express();
-const PORT = 8080;
+const PORT = process.env.PORT || 8080;
 
 const httpServer = createServer(app);
 const io = new Server(httpServer);
@@ -26,22 +30,13 @@ app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 app.use(express.static(path.join(__dirname, 'public')));
 
-const productManager = new ProductManager(path.join(__dirname, 'data', 'products.json'));
-
-app.use('/api/products', productsRouter(io));
+app.use('/api/products', productsRouterFactory(io));
 app.use('/api/carts', cartsRouter);
 app.use('/', viewsRouter);
 
-io.on('connection', socket => {
-  console.log('Cliente conectado');
+io.on('connection', () => console.log('🟢 WebSocket conectado'));
 
-  socket.on('newProduct', async (producto) => {
-    await productManager.addProduct(producto);
-    const productosActualizados = await productManager.getProducts();
-    io.emit('updateProducts', productosActualizados);
-  });
-});
-
+await connectMongo();
 httpServer.listen(PORT, () => {
-  console.log(`Servidor escuchando en http://localhost:${PORT}`);
+  console.log(`🚀 Servidor escuchando en http://localhost:${PORT}`);
 });
